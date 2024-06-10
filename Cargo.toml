@@ -1,0 +1,10 @@
+[package]
+name = "lsp-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["Shihua Liang <sxhx.liang@gmail.com>"]
+
+[dependencies]
+serde = { version = "1", features = ["derive", "serde_derive"]}
+serde_json = "1"
+jsonrpc-lite = "0.6.0"
