@@ -90,17 +90,17 @@ fn main() {
 
     // this init blob was copied from the atom client example here:
     // https://github.com/jonathandturner/rls_vscode/blob/master/src/extension.ts
-    let init = json!({
-        "process_id": "Null",
-        "root_path": "/Users/cmyr/Dev/hacking/xi-mac/xi-editor", // a path to some rust project
-        "initialization_options": {},
-        "capabilities": {
-            "documentSelector": ["rust"],
-            "synchronize": {
-                "configurationSection": "languageServerExample"
-            }
-        },
-    });
+    // let init = json!({
+    //     "process_id": "Null",
+    //     "root_path": "/Users/cmyr/Dev/hacking/xi-mac/xi-editor", // a path to some rust project
+    //     "initialization_options": {},
+    //     "capabilities": {
+    //         "documentSelector": ["rust"],
+    //         "synchronize": {
+    //             "configurationSection": "languageServerExample"
+    //         }
+    //     },
+    // });
 
     let (sender, receiver) = channel();
     // thread::spawn(move || {
@@ -130,79 +130,79 @@ fn main() {
         
     });
     let result = receiver.recv().unwrap();
-    // println!("Result: {:?}", &result);
+    println!("Result: {:#?}", &result);
 
-    let params: ResponseData = serde_json::from_value(result.unwrap()).unwrap();
-    println!("Params: {:#?}", &params);
+    // let params: ResponseData = serde_json::from_value(result.unwrap()).unwrap();
+    // println!("Params: {:#?}", &params);
 
-    let init = json!({
-        "process_id": "Null",
-        "key_sequence": "chatgpt", // a path to some rust project
-    });
+    // let init = json!({
+    //     "process_id": "Null",
+    //     "key_sequence": "chatgpt", // a path to some rust project
+    // });
 
-    let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
-    lang_server.send_request("command", &init, move |result| {
-        println!("received response {:?}", result);
-        _sender.send(result).unwrap();
+    // let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
+    // lang_server.send_request("command", &init, move |result| {
+    //     println!("received response {:?}", result);
+    //     _sender.send(result).unwrap();
         
-    });
-    let result = receiver.recv().unwrap();
+    // });
+    // let result = receiver.recv().unwrap();
 
-    let init = json!({
-        "process_id": "Null",
-        "key_sequence": "nihaoa ", // a path to some rust project
-    });
-    let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
-    lang_server.send_request("simulate_key_sequence", &init, move |result| {
-        println!("received response {:?}", result);
-        _sender.send(result).unwrap();
+    // let init = json!({
+    //     "process_id": "Null",
+    //     "key_sequence": "nihaoa ", // a path to some rust project
+    // });
+    // let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
+    // lang_server.send_request("simulate_key_sequence", &init, move |result| {
+    //     println!("received response {:?}", result);
+    //     _sender.send(result).unwrap();
         
-    });
-    let result = receiver.recv().unwrap();
+    // });
+    // let result = receiver.recv().unwrap();
     
-    let init = json!({
-        "process_id": "Null",
-        "key_sequence": "?", // a path to some rust project
-    });
-    let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
-    lang_server.send_request("command", &init, move |result| {
-        println!("received response {:?}", result);
-        _sender.send(result).unwrap();
+    // let init = json!({
+    //     "process_id": "Null",
+    //     "key_sequence": "?", // a path to some rust project
+    // });
+    // let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
+    // lang_server.send_request("command", &init, move |result| {
+    //     println!("received response {:?}", result);
+    //     _sender.send(result).unwrap();
         
-    });
-    let result = receiver.recv().unwrap();
+    // });
+    // let result = receiver.recv().unwrap();
 
 
+    // // let result = receiver.recv().unwrap();
+    // // println!("Result: {:?}", result);
+
+    // let init = json!({
+    //     "process_id": "Null",
+    //     "key_sequence": "ceshiyixia ", // a path to some rust project
+    // });
+
+    // let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
+    // lang_server.send_request("simulate_key_sequence", &init, move |result| {
+    //     // println!("received response {:?}", result);
+    //     _sender.send(result).unwrap();
+        
+    // });
     // let result = receiver.recv().unwrap();
     // println!("Result: {:?}", result);
 
-    let init = json!({
-        "process_id": "Null",
-        "key_sequence": "ceshiyixia ", // a path to some rust project
-    });
+    // let init = json!({
+    //     "process_id": "Null",
+    //     "key_sequence": "?", // a path to some rust project
+    // });
 
-    let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
-    lang_server.send_request("simulate_key_sequence", &init, move |result| {
-        // println!("received response {:?}", result);
-        _sender.send(result).unwrap();
+    // let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
+    // lang_server.send_request("command", &init, move |result| {
+    //     // println!("received response {:?}", result);
+    //     _sender.send(result).unwrap();
         
-    });
-    let result = receiver.recv().unwrap();
-    println!("Result: {:?}", result);
-
-    let init = json!({
-        "process_id": "Null",
-        "key_sequence": "?", // a path to some rust project
-    });
-
-    let _sender: std::sync::mpsc::Sender<Result<serde_json::Value, serde_json::Value>> = sender.clone();
-    lang_server.send_request("command", &init, move |result| {
-        // println!("received response {:?}", result);
-        _sender.send(result).unwrap();
-        
-    });
-    let result = receiver.recv().unwrap();
-    println!("Result: {:?}", result);
+    // });
+    // let result = receiver.recv().unwrap();
+    // println!("Result: {:?}", result);
 
     // lang_server.send_request("initialize", &init, |result| {
     //     println!("received response {:?}", result);

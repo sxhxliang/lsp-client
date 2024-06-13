@@ -21,6 +21,7 @@
 //SOFTWARE.
 
 use std::convert::TryInto;
+use std::sync::mpsc::channel;
 use std::sync::{Mutex, Arc};
 use std::thread;
 use std::process::{ChildStdin, Child};
@@ -56,6 +57,7 @@ struct LanguageServer<W: Write> {
     peer: W,
     pending: HashMap<usize, Callback>,
     next_id: usize,
+    notification_pending: Option<Callback>
 }
 
 
@@ -115,17 +117,17 @@ impl <W:Write> LanguageServer<W> {
 /// Access control and convenience wrapper around a shared LanguageServer instance.
 pub struct LanguageServerRef<W: Write>(Arc<Mutex<LanguageServer<W>>>);
 
-//FIXME: this is hacky, and prevents good error propogation,
-fn number_from_id(id: Option<&Value>) -> usize {
-    let id = id.expect("response missing id field");
-    let id = match id {
-        &Value::Number(ref n) => n.as_u64().expect("failed to take id as u64"),
-        &Value::String(ref s) => u64::from_str_radix(s, 10).expect("failed to convert string id to u64"),
-        other => panic!("unexpected value for id field: {:?}", other),
-    };
+// //FIXME: this is hacky, and prevents good error propogation,
+// fn number_from_id(id: Option<&Value>) -> usize {
+//     let id = id.expect("response missing id field");
+//     let id = match id {
+//         &Value::Number(ref n) => n.as_u64().expect("failed to take id as u64"),
+//         &Value::String(ref s) => u64::from_str_radix(s, 10).expect("failed to convert string id to u64"),
+//         other => panic!("unexpected value for id field: {:?}", other),
+//     };
 
-    id as usize
-}
+//     id as usize
+// }
 
 impl<W: Write> LanguageServerRef<W> {
     fn new(peer: W) -> Self {
@@ -133,6 +135,7 @@ impl<W: Write> LanguageServerRef<W> {
             peer: peer,
             pending: HashMap::new(),
             next_id: 1,
+            notification_pending: None
         })))
     }
 
@@ -145,33 +148,75 @@ impl<W: Write> LanguageServerRef<W> {
 
     //TODO: real logging (with slog?)
     fn handle_msg(&self, val: &Value) {
-        // println!("handle_msg: \n {}\n", val);
-
+        
         let parsed_value = JsonRpc::parse(val.to_string().as_str());
         if let Err(err) = parsed_value {
-            println!("error parsing json: {:?}", err);
+            // println!("error parsing json: {:?}", err);
             return;
         }
         let parsed_value = parsed_value.expect("to be present");
-        let id = parsed_value.get_id();
-        let response = parsed_value.get_result();
-        let error = parsed_value.get_error();
-        match (id, response, error) {
-            (Some(Id::Num(id)), Some(response), None) => {
-                let mut inner = self.0.lock().unwrap();
-                inner.handle_response(id.try_into().unwrap(), response.clone());
-            }
-            (Some(Id::Num(id)), None, Some(error)) => {
-                let mut inner = self.0.lock().unwrap();
-                inner.handle_error(id.try_into().unwrap(), Value::String(error.message.clone()));
-            }
-            (Some(Id::Num(id)), Some(response), Some(error)) => {
-                panic!("We got both response and error.. what even??");
-            }
-            _ => {}
-        }
+
+        match parsed_value.clone() {
+            JsonRpc::Request(_) => {
+                // println!("request");
+                // println!("request=====: \n {:#?}\n", parsed_value);
+            },
+            JsonRpc::Notification(_) => {
+                // println!("Notification");
+                // println!("Notification=====: \n {:#?}\n", parsed_value);
+                // let method = parsed_value.get_method().unwrap();
+                // let params = val.clone();
+
+                // let mut inner = self.0.lock().unwrap();
+                // inner.send_notification(method, &val);
+            },
+            JsonRpc::Success(_) => {
+                // println!("Success=====: \n {:#?}\n", parsed_value);
+                let id = parsed_value.get_id();
+                let response = parsed_value.get_result();
+                let error = parsed_value.get_error();
+                match (id, response, error) {
+                    (Some(Id::Num(id)), Some(response), None) => {
+                        let mut inner = self.0.lock().unwrap();
+                        inner.handle_response(id.try_into().unwrap(), response.clone());
+                    }
+                    (Some(Id::Num(id)), None, Some(error)) => {
+                        let mut inner = self.0.lock().unwrap();
+                        inner.handle_error(id.try_into().unwrap(), Value::String(error.message.clone()));
+                    }
+                    (Some(Id::Num(id)), Some(response), Some(error)) => {
+                        panic!("We got both response and error.. what even??");
+                    }
+                    _ => {}
+                }
+            },
+            JsonRpc::Error(_) => {
+                // println!("Error");
+            },
+        };
+
+
     }
 
+    // fn listen_notification<CB>(&mut self, completion: CB)
+    //     where CB: 'static + Send + FnOnce(Result<Value, Value>) {
+    //     // let callback = self.pending.remove(&id).expect(&format!("id {} missing from request table", id));
+    //     // callback.call(Ok(result));
+    //     let mut inner = self.0.lock().unwrap();
+
+    //     let (sender, receiver) = channel();
+        
+    //     match inner.notification_pending {
+    //         Some(callback) => {
+    //             callback.call(Ok(result))
+    //         },
+    //         None => {
+                
+    //         },
+    //     }
+    //     // callback.call(Ok(result));
+    // }
+    
     /// Sends a JSON-RPC request message with the provided method and parameters.
     /// `completion` should be a callback which will be executed with the server's response.
     pub fn send_request<CB>(&self, method: &str, params: &Value, completion: CB)
