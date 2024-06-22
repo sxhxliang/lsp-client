@@ -49,15 +49,47 @@ impl<F:Send + FnOnce(Result<Value, Value>)> Callable for F {
 
 type Callback = Box<dyn Callable>;
 
+// add a callback
+pub struct Event {
+    handlers:  Vec<Box<dyn Fn(&Value) + Send >>,
+}
+
+impl Event {
+    pub fn new() -> Self {
+        Self { handlers: vec![] }
+    }
+    
+    pub fn subscribe<F>(&mut self, handler: F)
+    where
+        F: Fn(&Value) + 'static +  Send,
+    {
+        self.handlers.push(Box::new(handler));
+    }
+    pub fn emit(&mut self, payload: &Value) {
+        for handler in &self.handlers {
+            handler(payload);
+        }
+    }
+}
+
+impl Default for Event {
+    fn default() -> Self {
+        Self { handlers: Default::default() }
+    }
+}
+
 /// Represents (and mediates communcation with) a Language Server.
 ///
 /// LanguageServer should only ever be instantiated or accessed through an instance of
 /// LanguageServerRef, which mediates access to a single shared LanguageServer through a Mutex.
+// #[derive(Default)]
 struct LanguageServer<W: Write> {
     peer: W,
     pending: HashMap<usize, Callback>,
     next_id: usize,
-    notification_pending: Option<Callback>
+    event: Event,
+    // listeners: HashMap<usize, Callback>,
+    // listener_id: usize,
 }
 
 
@@ -86,6 +118,13 @@ impl <W:Write> LanguageServer<W> {
         self.send_rpc(&request);
     }
 
+    pub fn add_listener<F>(&mut self, completion: F) 
+    where
+        F: Fn(&Value) + 'static +  Send,
+    {
+        self.event.subscribe(completion);
+    }
+
     fn send_notification(&mut self, method: &str, params: &Value) {
         let notification = json!({
             "jsonrpc": "2.0",
@@ -98,6 +137,10 @@ impl <W:Write> LanguageServer<W> {
     fn handle_response(&mut self, id: usize, result: Value) {
         let callback = self.pending.remove(&id).expect(&format!("id {} missing from request table", id));
         callback.call(Ok(result));
+    }
+
+    fn handle_notification(&mut self, result: &Value) {
+        self.event.emit(result);
     }
 
     fn handle_error(&mut self, id: usize, error: Value) {
@@ -132,10 +175,12 @@ pub struct LanguageServerRef<W: Write>(Arc<Mutex<LanguageServer<W>>>);
 impl<W: Write> LanguageServerRef<W> {
     fn new(peer: W) -> Self {
         LanguageServerRef(Arc::new(Mutex::new(LanguageServer {
-            peer: peer,
+            peer,
             pending: HashMap::new(),
             next_id: 1,
-            notification_pending: None
+            event: Event::default(),
+            // listeners: HashMap::new(),
+            // listener_id: 1,
         })))
     }
 
@@ -167,8 +212,8 @@ impl<W: Write> LanguageServerRef<W> {
                 // let method = parsed_value.get_method().unwrap();
                 // let params = val.clone();
 
-                // let mut inner = self.0.lock().unwrap();
-                // inner.send_notification(method, &val);
+                let mut inner = self.0.lock().unwrap();
+                inner.handle_notification(&val);
             },
             JsonRpc::Success(_) => {
                 // println!("Success=====: \n {:#?}\n", parsed_value);
@@ -198,25 +243,15 @@ impl<W: Write> LanguageServerRef<W> {
 
     }
 
-    // fn listen_notification<CB>(&mut self, completion: CB)
-    //     where CB: 'static + Send + FnOnce(Result<Value, Value>) {
-    //     // let callback = self.pending.remove(&id).expect(&format!("id {} missing from request table", id));
-    //     // callback.call(Ok(result));
-    //     let mut inner = self.0.lock().unwrap();
+    // listening notification messages (JSON-RPC ) from the Language Server
+    pub fn add_listener<F>(&mut self, completion: F) 
+    where
+        F: Fn(&Value) + 'static +  Send 
+    {
+        let mut inner = self.0.lock().unwrap();
+        inner.add_listener(completion)
+    }
 
-    //     let (sender, receiver) = channel();
-        
-    //     match inner.notification_pending {
-    //         Some(callback) => {
-    //             callback.call(Ok(result))
-    //         },
-    //         None => {
-                
-    //         },
-    //     }
-    //     // callback.call(Ok(result));
-    // }
-    
     /// Sends a JSON-RPC request message with the provided method and parameters.
     /// `completion` should be a callback which will be executed with the server's response.
     pub fn send_request<CB>(&self, method: &str, params: &Value, completion: CB)

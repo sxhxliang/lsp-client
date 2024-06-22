@@ -33,7 +33,7 @@ use std::process::{Child, ChildStdin, Command, Stdio};
 use lsp_client::{start_language_server, LanguageServerRef};
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 
 pub struct GPTEngine {
     pub lsp_lang_server: Option<Arc<Mutex<LanguageServerRef<ChildStdin>>>>,
@@ -85,7 +85,7 @@ struct ResponseData {
 
 fn main() {
     println!("starting main read loop");
-    let (mut child, lang_server) = start_language_server(prepare_command());
+    let (mut child, mut lang_server) = start_language_server(prepare_command());
 
 
     // this init blob was copied from the atom client example here:
@@ -124,6 +124,16 @@ fn main() {
     // let lang_server = binding.lock().unwrap();
 
 
+    lang_server.add_listener(|key| {
+        println!("Pressed1 \"{}\"", key);
+    });
+    lang_server.add_listener(|key| {
+        println!("Pressed2 \"{}\"", key);
+    });
+    lang_server.add_listener(|key| {
+        println!("Pressed3 \"{}\"", key);
+    });
+    
     lang_server.send_request("simulate_key_sequence", &init, move |result| {
         // println!("received response {:?}", result);
         _sender.send(result).unwrap();
